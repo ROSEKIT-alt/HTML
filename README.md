@@ -1,2 +1,1 @@
-# HTML
-html projects
+just a lot of stuff i made
