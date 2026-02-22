@@ -1,0 +1,174 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>3D Sphere</title>
+   <style>
+      body {
+         margin: 0;
+         background: #000;
+         color: #0ff;
+         font-family: monospace;
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         touch-action: none;
+      }
+      h1 {
+         margin: 10px;
+         text-shadow: 0 0 8px #0ff;
+      }
+      canvas {
+         border: 2px solid #0ff;
+         box-shadow: 0 0 20px #0ff;
+         margin-top: 10px;
+         display: block;
+      }
+      .controls {
+         width: 90%;
+         max-width: 400px;
+         margin-top: 10px;
+         border: 2px solid #0ff;
+         padding: 10px;
+         box-shadow: 0 0 10px #0ff;
+      }
+      label {
+         display: block;
+         margin: 6px 0;
+      }
+      .status {
+         margin-top: 8px;
+         font-size: 14px;
+         color: #0fa;
+      }
+   </style>
+</head>
+<body>
+    <h1>3D Sphere</h1>
+    <canvas id="canvas" width="300" height="300"></canvas>
+
+    <div class="controls">
+       <label for="radius">
+          Radius:
+          <input type="range" min="40" max="140" value="100" id="radius">
+       </label>
+
+       <label for="points">
+          Points:
+          <input type="range" min="200" max="2000" value="800" id="points">
+       </label>
+
+       <label for="rx"><input type="checkbox" id="rx" checked> Rotate X</label>
+       <label for="ry"><input type="checkbox" id="ry" checked> Rotate Y</label>
+       <label for="mouse"><input type="checkbox" id="mouse"> Mouse Interact</label>
+
+       <div class="status" id="status">X: 0° | Y: 0°</div>
+    </div>
+
+   <script>
+          const STATUS = document.getElementById("status");
+          const RX = document.getElementById("rx");
+          const RY = document.getElementById("ry");
+          const MOUSE = document.getElementById("mouse");
+          const RADIUS = document.getElementById("radius");
+          const POINTS = document.getElementById("points");
+          const CANVAS = document.getElementById("canvas");
+          const CTX = CANVAS.getContext("2d");
+          let radius = 100;
+          let pointCount = 800;
+          let rotX = 0;
+          let rotY = 0;
+          let drag = false;
+          let lastX = 0;
+          let lastY = 0;
+
+          let points = [];
+
+          function generateSphere() {
+             points = [];
+             const goldenAngle = Math.PI * (3 - Math.sqrt(5));
+             for (let i = 0; i < pointCount; i++) {
+                  const y = 1 - (i / (pointCount - 1)) * 2;
+                  const radius = Math.sqrt(1 - y * y);
+                  const theta = goldenAngle * i;
+                  const x = Math.cos(theta) * radius;
+                  const z = Math.sin(theta) * radius;
+                  points.push({ x, y, z });
+             }
+          }
+
+          function drawSphere() {
+             CTX.clearRect(0, 0, CANVAS.width, CANVAS.height);
+
+             const cx = CANVAS.width / 2;
+             const cy = CANVAS.height / 2;
+
+             for (const p of points) {
+                  let x = p.x * radius;
+                  let y = p.y * radius;
+                  let z = p.z * radius;
+
+                  let xz = x * Math.cos(rotY) - z * Math.sin(rotY);
+                  let zz = x * Math.sin(rotY) + z * Math.cos(rotY);
+
+                  let yz = y * Math.cos(rotX) - zz * Math.sin(rotX);
+                  zz = y * Math.sin(rotX) + zz * Math.cos(rotX);
+
+                  const scale = 1 + zz / (radius * 2);
+                  const sx = cx - xz * scale;
+                  const sy = cy - yz * scale;
+                  const brightness = Math.floor((zz / radius + 1) * 120);
+
+                  CTX.fillStyle = `rgb(0, ${brightness}, ${brightness + 40})`;
+                  CTX.fillRect(sx, sy, 2, 2);
+             }
+
+             STATUS.textContent = `X: ${(rotX * 57.3).toFixed(1)}° | Y: ${(rotY * 57.3).toFixed(1)}°`;
+          }
+
+          function loop() {
+             if (RX.checked) rotX += 0.005;
+             if (RY.checked) rotY += 0.005;
+             drawSphere();
+             requestAnimationFrame(loop);
+          }
+
+          RADIUS.oninput = e => {
+               radius = +e.target.value;
+          };
+
+          POINTS.oninput = e => {
+               pointCount = +e.target.value;
+               generateSphere();
+          };
+
+          CANVAS.addEventListener("mousedown", e => {
+               if (!MOUSE.checked) return;
+               drag = true;
+               lastX = e.clientX;
+               lastY = e.clientY;
+          });
+
+          CANVAS.addEventListener("mousemove", e => {
+               if (!drag) return;
+               const dx = e.clientX - lastX;
+               const dy = e.clientY - lastY;
+               rotY += dx * 0.004;
+               rotX += dy * 0.004;
+               lastX = e.clientX;
+               lastY = e.clientY;
+          });
+
+          CANVAS.addEventListener("mouseup", () => {
+               drag = false;
+          });
+
+          CANVAS.addEventListener("mouseleave", () => {
+               drag = false;
+          });
+
+          generateSphere();
+          loop();
+   </script>
+</body>
+</html>

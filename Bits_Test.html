@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>Bits Test</title>
+   <style>
+      body {
+         background: #0a0a0a;
+         color: #00ff66;
+         font-family: monospace;
+         text-align: center;
+         padding-top: 20px;
+      }
+      .panel {
+         width: 320px;
+         margin: auto;
+         border: 2px solid #00ff66;
+         padding: 15px;
+      }
+      select, button, textarea {
+         background: #000;
+         color: #00ff66;
+         border: 1px solid #00ff66;
+         width: 90%;
+         padding: 6px;
+         margin-top: 10px;
+         font-family: monospace;
+      }
+      textarea {
+         height: 100px;
+         resize: none;
+         font-size: 18px;
+      }
+      button:hover {
+         background: #003311;
+      }
+      #bits {
+         margin-top: 15px;
+         padding: 10px;
+         border: 1px dashed #00ff66;
+         font-size: 18px;
+         word-break: break-all;
+      }
+      #value {
+         margin-top: 8px;
+         font-size: 14px;
+         color: #66ff99;
+      }
+   </style>
+</head>
+<body>
+    <h2>Bits Test</h2>
+    <div class="panel">
+       <select id="bitType">
+          <option value="4">4 Bits</option>
+          <option value="8" selected>8 Bits</option>
+          <option value="16">16 Bits</option>
+       </select>
+       <button id="changeBtn">Change Bits</button>
+
+       <div id="bits">00000000</div>
+       <div id="value">Dec: 0 | Hex: 0x00</div>
+
+       <textarea id="cmd" spellcheck="false" placeholder="Read the README.txt for commands"></textarea>
+       <button id="runBtn">Run CMD</button>
+    </div>
+
+   <script>
+      const bitType = document.getElementById("bitType");
+      const bitsDiv = document.getElementById("bits");
+      const valueDiv = document.getElementById("value");
+      const changeBtn = document.getElementById("changeBtn");
+      const runBtn = document.getElementById("runBtn");
+      const cmdBox = document.getElementById("cmd");
+
+      let bits = 8;
+      let value = 0;
+
+      function updateDisplay() {
+         const limit = (1 << bits) - 1;
+         value &= limit;
+         bitsDiv.textContent = value.toString(2).padStart(bits,'0');
+         valueDiv.textContent = "Dec: " + value + " | Hex: 0x" + value.toString(16).toUpperCase();
+      }
+
+      changeBtn.onclick = function() {
+         bits = parseInt(bitType.value);
+         updateDisplay();
+      };
+
+      runBtn.onclick = function() {
+         const lines = cmdBox.value.split("\n");
+
+         lines.forEach(line => {
+             const p = line.trim().split(" ");
+             const cmd = p[0];
+
+             if (cmd === "addBits") {
+                 value += parseInt(p[1] || 0);
+             } else if (cmd === "clearBits") {
+                 value = 0;
+             } else if (cmd === "swapBits") {
+                 const x = parseInt(p[1]);
+                 const y = parseInt(p[2]);
+                 if (!isNaN(x) && !isNaN(y)) {
+                     const bx = (value >> x) & 1;
+                     const by = (value >> y) & 1;
+                     if (bx !== by) {
+                         value ^= (1 << x) | (1 << y);
+                     }
+                 }
+             } else if (cmd === "shiftBitsL") {
+                 value <<= parseInt(p[1] || 0);
+             } else if (cmd === "shiftBitsR") {
+                 value >>= parseInt(p[1] || 0);
+             }
+         });
+         updateDisplay();
+      };
+
+      updateDisplay();
+   </script>
+</body>
+</html>

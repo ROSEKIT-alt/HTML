@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>Image Corruptor</title>
+   <style>
+      body {
+         background: #111;
+         color: #0f0;
+         font-family: monospace;
+         text-align: center;
+         padding-top: 20px;
+      }
+      .panel {
+         border: 2px solid #0f0;
+         width: 300px;
+         margin: auto;
+         padding: 15px;
+      }
+      input, button {
+         background: #000;
+         color: #0f0;
+         border: 1px solid #0f0;
+         padding: 6px;
+         width: 90%;
+         margin-top: 10px;
+      }
+      button:hover {
+         background: #0f0;
+         color: #000;
+      }
+      img {
+         width: 220px;
+         margin-top: 20px;
+         border: 2px solid #0f0;
+      }
+   </style>
+</head>
+<body>
+    <h2>Image Corruptor</h2>
+    <div class="panel">
+      <input id="fileInput" type="file">
+      <input id="factor" type="number" placeholder="Corrupt Factor (5-100)" min="5" max="100">
+      <button id="corruptBtn">Corrupt</button>
+      <button id="downloadBtn">Download</button>
+      <img id="previewIn">
+      <img id="previewOut">
+    </div>
+
+   <script>
+      const fileInput = document.getElementById("fileInput");
+      const factor = document.getElementById("factor");
+      const corruptBtn = document.getElementById("corruptBtn");
+      const downloadBtn = document.getElementById("downloadBtn");
+      const previewIn = document.getElementById("previewIn");
+      const previewOut = document.getElementById("previewOut");
+      const reader2 = new FileReader();
+      const state = {
+            bytes: null,
+            type: "image/png",
+            blob: null
+      };
+
+      fileInput.onchange = function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const reader1 = new FileReader();
+            reader1.onload = function(evt) {
+                previewIn.src = evt.target.result;
+            };
+            reader1.readAsDataURL(file);
+
+            reader2.onload = function(evt) {
+                state.bytes = new Uint8Array(evt.target.result);
+            };
+            reader2.readAsArrayBuffer(file);
+      };
+
+      function corruptBytes(bytes, strength) {
+         const amount = Math.floor(bytes.length * (strength / 4000));
+         for (let i = 0; i < amount; i++) {
+              const p = Math.floor(Math.random() * bytes.length);
+              bytes[p] ^= Math.floor(Math.random() * 256);
+         }
+      }
+
+      function updatePreview() {
+         const blob = new Blob([state.bytes], { type: state.type });
+         const url = URL.createObjectURL(blob);
+         previewOut.src = url;
+         state.blob = blob;
+      }
+
+     corruptBtn.onclick = function() {
+         if (!state.bytes) return;
+         const val = parseInt(factor.value);
+         corruptBytes(state.bytes, val);
+         updatePreview();
+     };
+
+     downloadBtn.onclick = function() {
+         if (!state.blob) return;
+         const link = document.createElement("a");
+         const url = URL.createObjectURL(state.blob);
+         link.href = url;
+         link.download = `corrupted_${Date.now()}.png`;
+         link.click();
+         URL.revokeObjectURL(url);
+     };
+   </script>
+</body>
+</html>

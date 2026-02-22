@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>Bytebeat Composer</title>
+   <style>
+      :root {
+         --bg: #0f1113;
+         --panel: #15181b;
+         --muted: #9aa3a8;
+         --accent: #ffcc00;
+         --green: #7ef0a2;
+         --mono: ui-monospace, SFMono-Regular, Menlo, Monaco, "Roboto Mono", "Courier New", monospace;
+      }
+      body {
+         margin: 0;
+         background: linear-gradient(180deg, var(--bg), #0b0c0d);
+         color: #e8eef1;
+         font-family: var(--mono);
+         display: flex;
+         flex-direction: column;
+         align-items: center;
+         gap: 14px;
+         padding: 18px;
+         box-sizing: border-box;
+      }
+      h1 {
+         margin: 0;
+         font-size: 18px;
+         color: var(--accent);
+         letter-spacing: 0.6px;
+      }
+      .row {
+         display: flex;
+         gap: 10px;
+         align-items: center;
+      }
+      .panel {
+         background: var(--panel);
+         border-radius: 10px;
+         padding: 12px;
+         box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.02);
+         width: 100%;
+         max-width: 980px;
+      }
+      .editor {
+         width: 100%;
+         box-sizing: border-box;
+         background: #0e1012;
+         color: #e6eef2;
+         resize: vertical;
+         min-height: 92px;
+         max-height: 300px;
+         padding: 10px;
+         border-radius: 6px;
+         border: 1px solid rgba(255, 255, 255, 0.04);
+         font-family: var(--mono);
+         font-size: 13px;
+         line-height: 1.5;
+         outline: none;
+         caret-color: var(--accent);
+      }
+      .controls {
+         display: flex;
+         gap: 8px;
+         flex-wrap: wrap;
+         align-items: center;
+      }
+      select, input[type="number"] {
+         background: #0e1012;
+         color: #e6eef2;
+         padding: 6px;
+         border-radius: 6px;
+         border: 1px solid rgba(255, 255, 255, 0.04);
+         font-family: var(--mono);
+      }
+      button {
+         background: #111315;
+         color: var(--accent);
+         border: 1px solid rgba(255, 255, 255, 0.04);
+         padding: 8px 12px;
+         border-radius: 8px;
+         cursor: pointer;
+         font-family: var(--mono);
+      }
+      button.secondary {
+         color: var(--green);
+         background: #0c0f10;
+      }
+      button:active {
+         transform: translateY(1px);
+      }
+      .canvas-wrap {
+         margin-top: 12px;
+         background: #0b0d0e;
+         border-radius: 8px;
+         padding: 10px;
+         display: flex;
+         flex-direction: column;
+         gap: 8px;
+      }
+      canvas {
+         width: 100%;
+         height: 140px;
+         border-radius: 6px;
+         background: #070808;
+         display: block;
+      }
+      .notes {
+         color: var(--muted);
+         font-size: 13px;
+         margin-top: 8px;
+      }
+      @media (max-width: 640px) {
+         .controls {
+            flex-direction: column;
+            align-items: stretch;
+         }
+
+         .row {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 8px;
+         }
+      }
+   </style>
+</head>
+<body>
+   <h1>Bytebeat Composer</h1>
+   <div class="panel">
+      <div class="row" style="justify-content:space-between;align-items:flex-start;">
+         <div style="flex:1;min-width:300px;margin-right:10px;">
+            <label style="display:block;margin-bottom:6px;color:var(--muted);font-size:13px;">Expression (use <code>t</code> for sample index)</label>
+            <textarea id="expr" class="editor" spellcheck="false" placeholder="e.g. t*(42&t>>10)"></textarea>
+            <div class="notes">Examples: <code>t&(t/256)</code> · <code>t*(42&t>>10)</code></div>
+         </div>
+         <div style="width:320px;">
+            <div class="controls" style="margin-bottom:8px;">
+               <label style="font-size:13px;color:var(--muted);">Sample rate</label>
+               <select id="sr">
+                  <option value="8000" selected>8 kHz</option>
+                  <option value="11025">11.05 kHz</option>
+                  <option value="22050">22.05 kHz</option>
+                  <option value="27306.668">27.3 kHz</option>
+                  <option value="44100">44.1 kHz</option>
+                  <option value="48000">48 kHz</option>
+               </select>
+               <label style="font-size:13px;color:var(--muted);">Duration</label>
+               <input id="dur" type="number" min="1" max="60" value="10" style="width:80px;" title="seconds">
+            </div>
+            <div class="controls" style="margin-bottom:6px;">
+               <button id="playBtn">Play</button>
+               <button id="stopBtn" class="secondary">Stop</button>
+               <button id="renderBtn" class="secondary">Render</button>
+               <button id="downloadBtn" class="secondary">Download .WAV</button>
+            </div>
+            <div class="notes" style="margin-top:10px;">
+               The expression runs in the browser. Use bitwise ops, shifts, + - * / & | ^ ~, parenthesis.<br>
+               <strong>t</strong> is the integer sample index (0,1,2 ...). Result is clamped to 0..255 and converted to audio.
+            </div>
+         </div>
+      </div>
+      <div class="canvas-wrap">
+         <label style="color:var(--muted);font-size:13px;">Waveform</label>
+         <canvas id="wave"></canvas>
+      </div>
+   </div>
+
+   <script>
+      (function() {
+          const exprEl = document.getElementById("expr");
+          const srEl = document.getElementById("sr");
+          const durEl = document.getElementById("dur");
+          const playBtn = document.getElementById("playBtn");
+          const stopBtn = document.getElementById("stopBtn");
+          const renderBtn = document.getElementById("renderBtn");
+          const downloadBtn = document.getElementById("downloadBtn");
+          const canvas = document.getElementById("wave");
+          const ctx = canvas.getContext("2d");
+          let audioCtx = null;
+          let sourceNode = null;
+          let analyser = null;
+          let audioBuffer = null;
+          let rafId = null;
+          const DEFAULT = "(t>>7|t|t>>6)*10+4*(t&t>>13|t>>6)";
+          exprEl.value = DEFAULT;
+
+          function buildGenerator(expr) {
+             try {
+                  const fn = new Function("t","s","Math",`return(${expr});`);
+                  return (t, s) => {
+                      const v = fn(t, s, Math);
+                      if (Number.isFinite(v)) return v;
+                      return 0;
+                  };
+             } catch(e) {
+                  throw new Error("Invalid expression: " + e.message);
+             }
+          }
+
+          function generateBuffer(sampleRate, durationSec, generator) {
+             const length = Math.max(1, Math.floor(sampleRate * durationSec));
+             const data = new Float32Array(length);
+             for (let i = 0; i < length; i++) {
+                  let out;
+                  try {
+                       out = generator(i, sampleRate);
+                  } catch {
+                       out = 0;
+                  }
+
+                  if (!Number.isFinite(out)) out = 0;
+                  let val = out;
+                  if (Number.isInteger(val)) { 
+                      val = val & 0xFF;
+                  } else {
+                      val = Math.round(val);
+                      val = ((val % 256) + 256) % 256;
+                  }
+                  data[i] = (val - 128) / 128;
+             }
+             return data;
+          }
+
+          async function ensureAudio() {
+             if (!audioCtx) audioCtx = new AudioContext();
+             return audioCtx;
+          }
+
+          function playBuffer(float32Array, sampleRate) {
+             if (!audioCtx) return;
+             stopPlayback();
+             const buffer = audioCtx.createBuffer(1, float32Array.length, sampleRate);
+             buffer.copyToChannel(float32Array, 0, 0);
+             const src = audioCtx.createBufferSource();
+             src.buffer = buffer;
+             src.loop = true;
+             const anl = audioCtx.createAnalyser();
+             anl.fftSize = 2048;
+             src.connect(anl);
+             anl.connect(audioCtx.destination);
+             src.start();
+             sourceNode = src;
+             analyser = anl;
+             audioBuffer = buffer;
+             startVisual();
+          }
+
+          function stopPlayback() {
+             if (sourceNode) {
+                 sourceNode.stop();
+                 sourceNode.disconnect();
+                 sourceNode = null;
+             }
+
+             if (analyser) {
+                 analyser.disconnect();
+                 analyser = null;
+             }
+             stopVisual();
+          }
+
+          function resizeCanvasToDisplaySize(canvas) {
+             const DPR = window.devicePixelRatio || 1;
+             const width = Math.floor(canvas.clientWidth * DPR);
+             const height = Math.floor(canvas.clientHeight * DPR);
+             if (canvas.width !== width || canvas.height !== height) {
+                 canvas.width = width;
+                 canvas.height = height;
+             }
+          }
+
+          function startVisual() {
+             if (!analyser) return;
+             const bufferLength = analyser.fftSize;
+             const data = new Uint8Array(bufferLength);
+
+             function draw() {
+                if (!analyser) return;
+                resizeCanvasToDisplaySize(canvas);
+                analyser.getByteTimeDomainData(data);
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.fillStyle = "#070808";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = "#222";
+                ctx.lineWidth = 1;
+                ctx.beginPath();
+                ctx.moveTo(0, canvas.height / 2);
+                ctx.lineTo(canvas.width, canvas.height / 2);
+                ctx.stroke();
+                ctx.lineWidth = 2;
+                ctx.strokeStyle = "#ffcc00";
+                ctx.beginPath();
+                const sliceWidth = canvas.width / bufferLength;
+                let x = 0;
+                for (let i = 0; i < bufferLength; i++) {
+                     const v = data[i] / 128.0;
+                     const y = v * (canvas.height / 2);
+                     i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                     x += sliceWidth;
+                }
+                ctx.stroke();
+                ctx.fillStyle = "rgba(255, 204, 0, 0.04)";
+                ctx.fillRect(0, 0, canvas.width, canvas.height);
+                rafId = requestAnimationFrame(draw);
+             }
+             if (rafId) cancelAnimationFrame(rafId);
+             rafId = requestAnimationFrame(draw);
+          }
+
+          function stopVisual() {
+             if (rafId) cancelAnimationFrame(rafId);
+             rafId = null;
+             resizeCanvasToDisplaySize(canvas);
+             ctx.clearRect(0, 0, canvas.width, canvas.height);
+          }
+
+          function encodeWAV(float32Array, sampleRate) {
+             const samples = float32Array;
+             const sampleCount = samples.length;
+             const bytesPerSample = 2;
+             const blockAlign = bytesPerSample;
+             const byteRate = sampleRate * blockAlign;
+             const buffer = new ArrayBuffer(44 + sampleCount * bytesPerSample);
+             const view = new DataView(buffer);
+
+             function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) {
+                     view.setUint8(offset + i, string.charCodeAt(i));
+                }
+             }
+
+             writeString(view, 0, "RIFF");
+             view.setUint32(4, 36 + sampleCount * bytesPerSample, true);
+             writeString(view, 8, "WAVE");
+             writeString(view, 12, "fmt ");
+             view.setUint32(16, 16, true);
+             view.setUint16(20, 1, true);
+             view.setUint16(22, 1, true);
+             view.setUint32(24, sampleRate, true);
+             view.setUint32(28, byteRate, true);
+             view.setUint16(32, blockAlign, true);
+             view.setUint16(34, bytesPerSample * 8, true);
+             writeString(view, 36, "data");
+             view.setUint32(40, sampleCount * bytesPerSample, true);
+             let offset = 44;
+             for (let i = 0; i < sampleCount; i++) {
+                  let s = Math.max(-1, Math.min(1, samples[i]));
+                  s = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                  view.setInt16(offset, s, true);
+                  offset += 2;
+             }
+             return new Blob([view], {
+                  type: "audio/wav"
+             });
+          }
+
+          async function renderAndMaybePlay(autoPlay = false) {
+             const expr = exprEl.value.trim() || DEFAULT;
+             const sr = parseInt(srEl.value, 10);
+             const dur = Math.max(1, Math.min(60, Number(durEl.value) || 10));
+             let gen;
+             try {
+                  gen = buildGenerator(expr);
+             } catch(err) {
+                  alert(err.message);
+                  return null;
+             }
+             const floatSamples = generateBuffer(sr, dur, gen);
+             audioBuffer = floatSamples;
+             if (autoPlay) {
+                 await ensureAudio();
+                 playBuffer(floatSamples, sr);
+             }
+             return {
+                 samples: floatSamples,
+                 sr
+             };
+          }
+
+          playBtn.addEventListener("click", async () => {
+             try {
+                  await ensureAudio();
+                  const r = await renderAndMaybePlay(true);
+                  if (!r) return;
+                  playBtn.disabled = true;
+                  stopBtn.disabled = false;
+             } catch(e) {
+                  alert("Play failed: " + e.message);
+             }
+          });
+
+          stopBtn.addEventListener("click", () => {
+             stopPlayback();
+             playBtn.disabled = false;
+             stopBtn.disabled = true;
+          });
+
+          renderBtn.addEventListener("click", async () => {
+             try {
+                  const r = await renderAndMaybePlay(false);
+                  if (!r) return;
+                  alert("Rendered " + Math.round(r.sr * Math.max(1, Math.min(60, Number(durEl.value)))) + " samples.");
+             } catch(e) {
+                  alert("Render failed: " + e.message);
+             }
+          });
+
+          downloadBtn.addEventListener("click", async () => {
+              try {
+                   const res = await renderAndMaybePlay(false);
+                   if (!res) return;
+                   const blob = encodeWAV(res.samples, res.sr);
+                   const url = URL.createObjectURL(blob);
+                   const a = document.createElement("a");
+                   a.href = url;
+                   a.download = "bytebeat.wav";
+                   document.body.appendChild(a);
+                   a.click();
+                   a.remove();
+                   URL.revokeObjectURL(url);
+              } catch(e) {
+                   alert("Download failed: " + e.message);
+              }
+          });
+          stopBtn.disabled = true;
+      })();
+   </script>
+</body>
+</html>
