@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+   <meta charset="UTF-8">
+   <title>Binary Constructor Test</title>
+   <link rel="stylesheet" href="style.css">
+   <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&family=Inter:wght@400;600&display=swap">
+</head>
+<body>
+   <div class="container">
+      <h1>Binary Constructor Test</h1>
+
+      <div class="input-section card">
+         <div class="input-row">
+            <div class="input-group">
+               <label for="valueInput">Value:</label>
+               <input type="text" id="valueInput" placeholder="e.g., 255, 3.14, 0xAF" title="Enter a numeric value (decimal or hex).">
+            </div>
+            <div class="input-group">
+               <label for="dataTypeSelect">Data Type:</label>
+               <select id="dataTypeSelect" title="Select the data type for the value.">
+                  <option value="Uint8">Uint8 (1 byte)</option>
+                  <option value="Int8">Int8 (1 byte)</option>
+                  <option value="Uint16">Uint16 (2 bytes)</option>
+                  <option value="Int16">Int16 (2 bytes)</option>
+                  <option value="Uint32">Uint32 (4 bytes)</option>
+                  <option value="Int32">Int32 (4 bytes)</option>
+                  <option value="Float32">Float32 (4 bytes)</option>
+                  <option value="Float64">Float64 (8 bytes)</option>
+               </select>
+            </div>
+         </div>
+         <div class="input-row">
+            <div class="input-group">
+               <label>Endianness:</label>
+               <div class="radio-group">
+                  <input type="radio" id="bigEndian" name="endianness" value="big" checked>
+                  <label for="bigEndian">Big Endian</label>
+                  <input type="radio" id="littleEndian" name="endianness" value="little">
+                  <label for="littleEndian">Little Endian</label>
+               </div>
+            </div>
+         </div>
+         <button id="addDataBtn" class="action-btn primary">Add Data Point</button>
+      </div>
+
+      <div class="data-points-section card">
+         <h2>Data Points to Construct:</h2>
+         <div id="dataPointsList" class="data-list-container">
+            <p class="placeholder-text">No data points added yet.</p>
+         </div>
+         <div class="current-buffer-info">
+            <span>Current estimated buffer size: <strong id="bufferSizeDisplay">0 bytes</strong></span>
+         </div>
+         <div class="button-row">
+            <button id="constructBinaryBtn" class="action-btn primary large">Construct Binary</button>
+            <button id="clearAllDataBtn" class="action-btn secondary">Clear All</button>
+         </div>
+      </div>
+
+      <div class="console-section card">
+         <h2>Console Output:</h2>
+         <div id="consoleOutput" class="console">
+            <p class="info">Ready to construct your binary data!</p>
+        </div>
+        <button id="downloadBinaryBtn" class="action-btn success" disabled>Download "BINARY.bin"</button>
+      </div>
+   </div>
+
+   <script src="script.js"></script>
+</body>
+</html>
